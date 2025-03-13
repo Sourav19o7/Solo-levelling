@@ -1,3 +1,14 @@
+// Import functions and data from helper.js
+import { 
+    questions, 
+    characters, 
+    calculateUserScores, 
+    findMatchingCharacter, 
+    getQuizQuestions, 
+    getCharacterById, 
+    getCharacterByName 
+} from './helper.js';
+
 // DOM elements
 const startScreen = document.getElementById('start-screen');
 const quizSection = document.getElementById('quiz');
@@ -14,13 +25,8 @@ const traitsList = document.getElementById('traits-list');
 
 // Variables to track quiz state
 let currentQuestion = 0;
-let userDimensions = {
-    strength: 0,
-    leadership: 0,
-    intelligence: 0,
-    independence: 0,
-    compassion: 0
-};
+let quizQuestions = [];
+let userAnswers = [];
 
 // Initialize event listeners
 startButton.addEventListener('click', startQuiz);
@@ -65,8 +71,15 @@ function createParticles() {
  * Starts the quiz
  */
 function startQuiz() {
+    console.log("Start Quiz")
     startScreen.style.display = 'none';
     quizSection.style.display = 'block';
+    
+    // Get randomized questions from helper.js
+    quizQuestions = getQuizQuestions(10);
+    currentQuestion = 0;
+    userAnswers = [];
+    
     loadQuestion();
 }
 
@@ -74,7 +87,7 @@ function startQuiz() {
  * Loads the current question
  */
 function loadQuestion() {
-    const question = questions[currentQuestion];
+    const question = quizQuestions[currentQuestion];
     
     // Create question element
     questionContainer.innerHTML = `
@@ -89,7 +102,7 @@ function loadQuestion() {
     `;
     
     // Update progress bar
-    progressBar.style.width = `${(currentQuestion / questions.length) * 100}%`;
+    progressBar.style.width = `${(currentQuestion / quizQuestions.length) * 100}%`;
     
     // Add event listeners to options
     const options = document.querySelectorAll('.option');
@@ -104,75 +117,18 @@ function loadQuestion() {
  */
 function selectOption(e) {
     const selectedIndex = parseInt(e.target.dataset.index);
-    const selectedOption = questions[currentQuestion].options[selectedIndex];
     
-    // Update user dimensions based on the selected option
-    const dimensions = selectedOption.dimensions;
-    for (const dimension in dimensions) {
-        userDimensions[dimension] += dimensions[dimension];
-    }
+    // Store the user's answer
+    userAnswers.push(selectedIndex);
     
     // Move to next question or show result
     currentQuestion++;
-    if (currentQuestion < questions.length) {
+    if (currentQuestion < quizQuestions.length) {
         loadQuestion();
     } else {
         showResult();
     }
 }
-
-/**
- * Calculates character match based on user dimensions
- * @returns {Object} The best matching character
- */
-function calculateCharacterMatch() {
-    let bestMatch = null;
-    let bestScore = -Infinity;
-
-    // Define weight for each trait to prioritize key characteristics
-    const weight = {
-        Strength: 1.2,
-        Independence: 1.2,
-        Intelligence: 1,
-        Leadership: 1,
-        Compassion: 1
-    };
-
-    // Normalize user dimensions to a 0-10 scale
-    const totalQuestions = questions.length;
-    const normalizedDimensions = {};
-
-    for (const dimension in userDimensions) {
-        const maxPossible = totalQuestions * 2; // Max score per dimension
-        normalizedDimensions[dimension] = (userDimensions[dimension] / maxPossible) * 10;
-    }
-
-    // Calculate similarity score for each character
-    for (const character of characters) {
-        let similarityScore = 0;
-
-        for (const dimension in normalizedDimensions) {
-            const userScore = normalizedDimensions[dimension] || 0;
-            const charScore = (character.dimensions[dimension] / 10) * 10 || 0; // Normalize character's dimensions
-
-            // Convert difference into similarity score
-            const difference = Math.abs(userScore - charScore);
-            const dimensionSimilarity = (1 - (difference / 10)) * (weight[dimension] || 1); // Higher similarity is better
-
-            similarityScore += dimensionSimilarity;
-        }
-
-        // Select the best-matching character
-        if (similarityScore > bestScore) {
-            bestScore = similarityScore;
-            bestMatch = character;
-        }
-    }
-
-    return bestMatch;
-}
-
-
 
 /**
  * Shows the result of the quiz
@@ -181,8 +137,11 @@ function showResult() {
     quizSection.style.display = 'none';
     resultSection.classList.add('active');
     
-    // Calculate the best character match
-    const match = calculateCharacterMatch();
+    // Calculate user dimension scores using helper.js function
+    const userScores = calculateUserScores(userAnswers);
+    
+    // Find matching character using helper.js function
+    const match = findMatchingCharacter(userScores);
     
     // Display result
     characterImage.src = match.image;
@@ -204,13 +163,7 @@ function showResult() {
 function restartQuiz() {
     // Reset variables
     currentQuestion = 0;
-    userDimensions = {
-        strength: 0,
-        leadership: 0,
-        intelligence: 0,
-        independence: 0,
-        compassion: 0
-    };
+    userAnswers = [];
     
     // Hide result section
     resultSection.classList.remove('active');
